@@ -9,6 +9,8 @@ export type OfficeAgent = {
   color: string;
   item: string;
   avatarProfile?: AgentAvatarProfile | null;
+  /** Studio-hosted portrait used as the voxel face texture when present. */
+  avatarUrl?: string | null;
 };
 
 export type JanitorTool = "broom" | "vacuum" | "floor_scrubber";

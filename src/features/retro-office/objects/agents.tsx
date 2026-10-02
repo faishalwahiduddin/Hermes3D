@@ -1,7 +1,8 @@
 import { Billboard, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { memo, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { resolveHermesPortraitThumbUrl } from "@/lib/avatars/hermesPortraitMap";
 import { createDefaultAgentAvatarProfile } from "@/lib/avatars/profile";
 import {
   AGENT_SCALE,
@@ -79,6 +80,7 @@ export const AgentModel = memo(function AgentModel({
   status,
   color,
   appearance,
+  portraitUrl = null,
   agentsRef,
   agentLookupRef,
   onHover,
@@ -621,7 +623,7 @@ export const AgentModel = memo(function AgentModel({
   // Jacket accent brightened ~10% so it doesn't turn muddy under ACES tone mapping.
   const topAccentColor = topStyle === "jacket" ? "#2a3648" : cuffColor;
 
-  const faceTexture = useMemo(() => {
+  const proceduralFaceTexture = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 64;
     canvas.height = 64;
@@ -646,6 +648,57 @@ export const AgentModel = memo(function AgentModel({
     texture.needsUpdate = true;
     return texture;
   }, [skin]);
+
+  const resolvedPortraitUrl = useMemo(() => {
+    const explicit = portraitUrl?.trim();
+    if (explicit) return explicit;
+    return resolveHermesPortraitThumbUrl(agentId);
+  }, [agentId, portraitUrl]);
+
+  const [portraitFaceTexture, setPortraitFaceTexture] =
+    useState<THREE.Texture | null>(null);
+  const portraitFaceTextureRef = useRef<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    if (!resolvedPortraitUrl) {
+      portraitFaceTextureRef.current?.dispose();
+      portraitFaceTextureRef.current = null;
+      setPortraitFaceTexture(null);
+      return;
+    }
+    let cancelled = false;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      resolvedPortraitUrl,
+      (texture) => {
+        if (cancelled) {
+          texture.dispose();
+          return;
+        }
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 4;
+        texture.needsUpdate = true;
+        portraitFaceTextureRef.current?.dispose();
+        portraitFaceTextureRef.current = texture;
+        setPortraitFaceTexture(texture);
+      },
+      undefined,
+      () => {
+        if (!cancelled) {
+          portraitFaceTextureRef.current?.dispose();
+          portraitFaceTextureRef.current = null;
+          setPortraitFaceTexture(null);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+      portraitFaceTextureRef.current?.dispose();
+      portraitFaceTextureRef.current = null;
+    };
+  }, [resolvedPortraitUrl]);
+
+  const faceTexture = portraitFaceTexture ?? proceduralFaceTexture;
 
   const resolvedSpeechText =
     showSpeech && speechText?.trim()

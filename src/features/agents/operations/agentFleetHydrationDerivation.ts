@@ -1,4 +1,8 @@
 import { buildAgentMainSessionKey } from "@/lib/gateway/GatewayClient";
+import {
+  buildHermesAvatarProfile,
+  resolveHermesPortraitUrl,
+} from "@/lib/avatars/hermesPortraitMap";
 import { createDefaultAgentAvatarProfile } from "@/lib/avatars/profile";
 import { resolveConfiguredModelKey, type GatewayModelPolicySnapshot } from "@/lib/gateway/models";
 import {
@@ -143,6 +147,8 @@ const resolveAgentAvatarUrl = (agent: AgentsListResult["agents"][number]) => {
   if (!trimmed) return null;
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
   if (trimmed.startsWith("data:image/")) return trimmed;
+  // Allow Studio-hosted relative portrait paths (e.g. /agent-portraits/bagas.png).
+  if (trimmed.startsWith("/")) return trimmed;
   return null;
 };
 
@@ -217,13 +223,14 @@ export const deriveHydrateAgentFleetResult = (
   const needsSessionSettingsSync = new Set<string>();
   const seeds: AgentStoreSeed[] = input.agentsResult.agents.map((agent) => {
     const defaultAvatarProfile = createDefaultAgentAvatarProfile(agent.id);
+    const mappedProfile = buildHermesAvatarProfile(agent.id);
     const persistedProfile =
       input.settings && gatewayKey ? resolveAgentAvatarProfile(input.settings, gatewayKey, agent.id) : null;
     const persistedSeed =
       input.settings && gatewayKey ? resolveAgentAvatarSeed(input.settings, gatewayKey, agent.id) : null;
-    const avatarProfile = persistedProfile ?? defaultAvatarProfile;
+    const avatarProfile = persistedProfile ?? mappedProfile ?? defaultAvatarProfile;
     const avatarSeed = persistedSeed ?? avatarProfile.seed ?? agent.id;
-    const avatarUrl = resolveAgentAvatarUrl(agent);
+    const avatarUrl = resolveAgentAvatarUrl(agent) ?? resolveHermesPortraitUrl(agent.id);
     const name = resolveAgentName(agent);
     const runtimeName = resolveRuntimeName(agent);
     const identityName = resolveIdentityName(agent);

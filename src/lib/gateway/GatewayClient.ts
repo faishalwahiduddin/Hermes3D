@@ -724,6 +724,8 @@ export const useGatewayConnection = (
   const [adapterProfiles, setAdapterProfiles] = useState<
     Partial<Record<StudioGatewayAdapterType, { url: string; token: string }>>
   >({});
+  const adapterProfilesRef = useRef(adapterProfiles);
+  adapterProfilesRef.current = adapterProfiles;
   const [detectedAdapterType, setDetectedAdapterType] =
     useState<StudioGatewayAdapterType | null>(null);
   const [localGatewayDefaults, setLocalGatewayDefaults] = useState<StudioGatewaySettings | null>(
@@ -875,8 +877,20 @@ export const useGatewayConnection = (
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
+    // Onboarding has no adapter picker and defaults to "hermes". A Tailscale
+    // `hermes serve` URL needs the hermes-agent bridge; raw sockets time out.
+    const looksLikeHermesAgent =
+      /\.ts\.net(?::\d+)?\/?$/i.test(gatewayUrl.trim()) ||
+      /:(9120)\b/.test(gatewayUrl.trim());
+    const effectiveAdapterType =
+      selectedAdapterType === "hermes" && looksLikeHermesAgent
+        ? "hermes-agent"
+        : selectedAdapterType;
+    if (effectiveAdapterType !== selectedAdapterType) {
+      setSelectedAdapterTypeState(effectiveAdapterType);
+    }
     gatewayDebugLog("connect:start", {
-      selectedAdapterType,
+      selectedAdapterType: effectiveAdapterType,
       gatewayUrl,
       hasToken: Boolean(token),
     });
@@ -885,19 +899,19 @@ export const useGatewayConnection = (
     retryAttemptRef.current = 0;
     wasManualDisconnectRef.current = false;
     if (
-      selectedAdapterType === "custom" ||
-      selectedAdapterType === "local" ||
-      selectedAdapterType === "hermes3d"
+      effectiveAdapterType === "custom" ||
+      effectiveAdapterType === "local" ||
+      effectiveAdapterType === "hermes3d"
     ) {
       setStatus("connecting");
       try {
         await settingsCoordinator.flushPending();
         await probeCustomRuntime(gatewayUrl);
-        setDetectedAdapterType(selectedAdapterType);
+        setDetectedAdapterType(effectiveAdapterType);
         setStatus("connected");
         setConnectErrorCode(null);
         gatewayDebugLog("connect:runtime-success", {
-          selectedAdapterType,
+          selectedAdapterType: effectiveAdapterType,
           gatewayUrl,
         });
       } catch (err) {
@@ -906,16 +920,34 @@ export const useGatewayConnection = (
         setConnectErrorCode("studio.custom_runtime_probe_failed");
         setError(formatGatewayError(err));
         gatewayDebugLog("connect:runtime-failed", {
-          selectedAdapterType,
+          selectedAdapterType: effectiveAdapterType,
           message: err instanceof Error ? err.message : String(err),
         });
       }
       return;
     }
     try {
+      // Persist adapter + credentials before the proxy reads settings.json.
+      settingsCoordinator.schedulePatch(
+        {
+          gateway: {
+            url: gatewayUrl.trim(),
+            token: token || undefined,
+            adapterType: effectiveAdapterType,
+            profiles: {
+              ...adapterProfilesRef.current,
+              [effectiveAdapterType]: {
+                url: gatewayUrl.trim(),
+                token: token || undefined,
+              },
+            },
+          },
+        },
+        0,
+      );
       await settingsCoordinator.flushPending();
       const maxAttempts = resolveInitialGatewayConnectAttemptCount(
-        selectedAdapterType,
+        effectiveAdapterType,
         hasConnectedOnceRef.current
       );
       let lastError: unknown = null;
@@ -926,14 +958,14 @@ export const useGatewayConnection = (
             token,
             authScopeKey: gatewayUrl,
             clientName: resolveGatewayClientName(),
-            disableDeviceAuth: selectedAdapterType !== "hermes",
+            disableDeviceAuth: effectiveAdapterType !== "hermes",
           });
           lastError = null;
           break;
         } catch (err) {
           lastError = err;
           gatewayDebugLog("connect:attempt-failed", {
-            selectedAdapterType,
+            selectedAdapterType: effectiveAdapterType,
             attempt: attempt + 1,
             maxAttempts,
             message: err instanceof Error ? err.message : String(err),
@@ -963,7 +995,7 @@ export const useGatewayConnection = (
           ? hello.adapterType
           : "hermes";
       setDetectedAdapterType(nextDetectedAdapterType);
-      setHasLastKnownGoodState(nextDetectedAdapterType === selectedAdapterType);
+      setHasLastKnownGoodState(nextDetectedAdapterType === effectiveAdapterType);
       // Flush immediately (debounce=0) so lastKnownGood survives a quick refresh.
       settingsCoordinator.schedulePatch({
         gateway: {
@@ -975,14 +1007,14 @@ export const useGatewayConnection = (
         },
       }, 0);
       gatewayDebugLog("connect:success", {
-        selectedAdapterType,
+        selectedAdapterType: effectiveAdapterType,
         detectedAdapterType: nextDetectedAdapterType,
       });
     } catch (err) {
       setConnectErrorCode(err instanceof GatewayResponseError ? err.code : null);
       setError(formatGatewayError(err));
       gatewayDebugLog("connect:failed", {
-        selectedAdapterType,
+        selectedAdapterType: effectiveAdapterType,
         code: err instanceof GatewayResponseError ? err.code : null,
         message: err instanceof Error ? err.message : String(err),
       });

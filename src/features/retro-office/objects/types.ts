@@ -34,6 +34,8 @@ export type AgentModelProps = {
   status: OfficeAgent["status"];
   color: string;
   appearance?: AgentAvatarProfile | null;
+  /** Relative or absolute portrait URL; applied to the front face when loadable. */
+  portraitUrl?: string | null;
   agentsRef: RefObject<RenderAgent[]>;
   agentLookupRef?: RefObject<Map<string, RenderAgent>>;
   onHover?: (id: string) => void;

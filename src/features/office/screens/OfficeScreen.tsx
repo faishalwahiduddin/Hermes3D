@@ -118,6 +118,11 @@ import {
 } from "@/lib/gateway/models";
 import type { GatewayModelPolicySnapshot } from "@/lib/gateway/models";
 import {
+  resolveHermesAccentColor,
+  resolveHermesPortraitThumbUrl,
+  resolveHermesPortraitUrl,
+} from "@/lib/avatars/hermesPortraitMap";
+import {
   createDefaultAgentAvatarProfile,
   type AgentAvatarProfile,
 } from "@/lib/avatars/profile";
@@ -554,15 +559,23 @@ const getDeterministicItem = (id: string) => {
 };
 
 const mapAgentToOffice = (agent: AgentState): OfficeAgent => {
+  const accent =
+    resolveHermesAccentColor(agent.agentId) ?? stringToColor(agent.agentId);
+  const portrait =
+    agent.avatarUrl?.trim() ||
+    resolveHermesPortraitThumbUrl(agent.agentId) ||
+    resolveHermesPortraitUrl(agent.agentId) ||
+    null;
   if (agent.status === "error") {
     return {
       id: agent.agentId,
       name: agent.name || "Unknown",
       subtitle: agent.role ?? null,
       status: "error",
-      color: stringToColor(agent.agentId),
+      color: accent,
       item: getDeterministicItem(agent.agentId),
       avatarProfile: agent.avatarProfile ?? null,
+      avatarUrl: portrait,
     };
   }
   const isWorking = agent.status === "running" || Boolean(agent.runId);
@@ -571,9 +584,10 @@ const mapAgentToOffice = (agent: AgentState): OfficeAgent => {
     name: agent.name || "Unknown",
     subtitle: agent.role ?? null,
     status: isWorking ? "working" : "idle",
-    color: stringToColor(agent.agentId),
+    color: accent,
     item: getDeterministicItem(agent.agentId),
     avatarProfile: agent.avatarProfile ?? null,
+    avatarUrl: portrait,
   };
 };
 

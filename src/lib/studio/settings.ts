@@ -828,6 +828,7 @@ const normalizeGatewayProfiles = (
   const profiles: Partial<Record<StudioGatewayAdapterType, StudioGatewayProfile>> = {};
   for (const adapterType of [
     "hermes",
+    "hermes-agent",
     "demo",
     "local",
     "hermes3d",
@@ -894,6 +895,7 @@ const mergeGatewayProfiles = (
   };
   for (const adapterType of [
     "hermes",
+    "hermes-agent",
     "demo",
     "local",
     "hermes3d",

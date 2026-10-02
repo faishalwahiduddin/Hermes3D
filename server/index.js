@@ -105,7 +105,11 @@ async function main() {
   await app.prepare();
   const handleUpgrade = app.getUpgradeHandler();
   const handleServerUpgrade = (req, socket, head) => {
-    if (resolvePathname(req.url) === "/api/gateway/ws") {
+    const pathname = resolvePathname(req.url);
+    if (pathname === "/api/gateway/ws") {
+      console.info(
+        `[upgrade] /api/gateway/ws from ${req.socket?.remoteAddress || "?"} origin=${req.headers?.origin || "-"}`,
+      );
       proxy.handleUpgrade(req, socket, head);
       return;
     }

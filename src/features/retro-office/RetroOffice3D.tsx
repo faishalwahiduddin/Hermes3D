@@ -6316,6 +6316,9 @@ export function RetroOffice3D({
                       ? (agent.avatarProfile ?? null)
                       : null
                   }
+                  portraitUrl={
+                    "avatarUrl" in agent ? (agent.avatarUrl ?? null) : null
+                  }
                   agentsRef={renderAgentsRef}
                   agentLookupRef={renderAgentLookupRef}
                   onHover={isJanitor ? undefined : handleAgentHover}
@@ -6555,7 +6558,7 @@ export function RetroOffice3D({
                         onAgentEdit?.(agent.id);
                       }
                     }}
-                    className={`relative flex h-8 w-8 items-center justify-center rounded-full border text-[9px] font-bold text-[#120e08] shadow transition-transform hover:-translate-y-0.5 ${
+                    className={`relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border text-[9px] font-bold text-[#120e08] shadow transition-transform hover:-translate-y-0.5 ${
                       spotlightAgentId === agent.id
                         ? "border-amber-200/80 ring-2 ring-amber-200/20"
                         : "border-[#120e08] hover:border-amber-200/50"
@@ -6574,7 +6577,17 @@ export function RetroOffice3D({
                         {mood.emoji}
                       </span>
                     ) : null}
-                    <span>{getAgentInitials(agent.name)}</span>
+                    {"avatarUrl" in agent && agent.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={agent.avatarUrl}
+                        alt=""
+                        className="h-full w-full rounded-full object-cover"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span>{getAgentInitials(agent.name)}</span>
+                    )}
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#1c1610] ${dotClass}`}
                     />
@@ -6653,10 +6666,20 @@ export function RetroOffice3D({
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <div
-                          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-[#120e08]"
+                          className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-bold text-[#120e08]"
                           style={{ backgroundColor: agent.color }}
                         >
-                          {getAgentInitials(agent.name)}
+                          {"avatarUrl" in agent && agent.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={agent.avatarUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              draggable={false}
+                            />
+                          ) : (
+                            getAgentInitials(agent.name)
+                          )}
                           <span
                             className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#120e08] ${dotClass}`}
                           />

@@ -226,7 +226,25 @@ function createHermesAgentUpstream(options) {
 
   let client;
   try {
-    client = new HermesAgentJsonRpcClient({ url, token, handshakeTimeoutMs, log });
+    // Tailscale Serve forwards the tailnet Host header; loopback-bound
+    // `hermes serve` rejects that with HTTP 403. Prefer Host: localhost up front
+    // for *.ts.net so we don't spend a failed handshake on every connect.
+    let hostHeader = "";
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      if (hostname.endsWith(".ts.net") || hostname.endsWith(".ts.net.")) {
+        hostHeader = "localhost";
+      }
+    } catch {
+      // keep default Host from URL
+    }
+    client = new HermesAgentJsonRpcClient({
+      url,
+      token,
+      handshakeTimeoutMs,
+      hostHeader,
+      log,
+    });
   } catch (err) {
     // Defer so the caller can attach listeners before the failure lands.
     setImmediate(() => upstream.emit("error", err));

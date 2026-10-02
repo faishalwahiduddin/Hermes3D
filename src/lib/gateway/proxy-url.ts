@@ -14,7 +14,15 @@ export const resolveStudioProxyGatewayUrl = (upstreamGatewayUrl?: string): strin
   }
 
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = window.location.host;
+  // Some embedded browsers (incl. Cursor Browser) fail WebSocket upgrades to
+  // 127.0.0.1 but succeed on the localhost hostname for the same Studio port.
+  let host = window.location.host;
+  if (host === "127.0.0.1" || host.startsWith("127.0.0.1:")) {
+    host = host.replace("127.0.0.1", "localhost");
+  }
+  if (host === "[::1]" || host.startsWith("[::1]:")) {
+    host = host.replace("[::1]", "localhost");
+  }
   return `${protocol}://${host}/api/gateway/ws`;
 };
 

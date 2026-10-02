@@ -23,9 +23,10 @@ export const AgentAvatar = ({
   isSelected = false,
 }: AgentAvatarProps) => {
   const src = useMemo(() => {
-    if (avatarProfile) return buildAgentAvatarPortraitDataUrl(avatarProfile);
+    // Prefer real portrait photos when available (local fleet map / IDENTITY).
     const trimmed = avatarUrl?.trim();
     if (trimmed) return trimmed;
+    if (avatarProfile) return buildAgentAvatarPortraitDataUrl(avatarProfile);
     return buildAvatarDataUrl(seed);
   }, [avatarProfile, avatarUrl, seed]);
 
